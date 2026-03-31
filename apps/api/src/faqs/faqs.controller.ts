@@ -8,29 +8,15 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
-import { Cursor } from "@app/database/pagination/cursor-pagination";
 import { FaqsService } from "./faqs.service";
 import { CreateFaqsDto } from "./dto/create-faqs.dto";
-import { UpdateFaqsDto } from "./dto/update-faqs.dto";
+import { UpdateFaqItemDto, UpdateFaqsDto } from "./dto/update-faqs.dto";
 import { DeleteManyDto } from "./dto/delete-many.dto";
-
-function parseCursorToken(cursor?: string): Cursor | null {
-  if (!cursor) return null;
-  try {
-    return JSON.parse(Buffer.from(cursor, "base64").toString("utf8")) as Cursor;
-  } catch {
-    return null;
-  }
-}
-
-function toCursorToken(cursor: Cursor | null): string | null {
-  if (!cursor) return null;
-  return Buffer.from(JSON.stringify(cursor)).toString("base64");
-}
+import { ListFaqsDto } from "./dto/list-faqs.dto";
 
 @Controller("faqs")
 export class FaqsController {
-  constructor(private readonly faqsService: FaqsService) {}
+  constructor(private readonly faqsService: FaqsService) { }
 
   @Post("create")
   create(@Body() dto: CreateFaqsDto) {
@@ -42,31 +28,25 @@ export class FaqsController {
     return this.faqsService.updateMany(dto);
   }
 
+  @Patch(":id")
+  updateOne(@Param("id") id: string, @Body() body: Omit<UpdateFaqItemDto, "id">) {
+    return this.faqsService.updateOne(id, body as UpdateFaqItemDto);
+  }
+
   @Delete("delete")
   remove(@Body() dto: DeleteManyDto) {
     return this.faqsService.deleteMany(dto.ids);
   }
 
   @Get()
-  list(
-    @Query("shopId") shopId?: string,
-    @Query("includeDeleted") includeDeleted?: string,
-    @Query("cursor") cursor?: string,
-    @Query("limit") limit?: string,
-    @Query("search") search?: string,
-  ) {
-    return this.faqsService
-      .list({
-        shopId,
-        includeDeleted: includeDeleted === "true",
-        cursor: parseCursorToken(cursor),
-        limit: limit ? Number(limit) : undefined,
-        search,
-      })
-      .then((result) => ({
-        items: result.items,
-        nextCursor: toCursorToken(result.nextCursor),
-      }));
+  list(@Query() query: ListFaqsDto) {
+    const { shopId, includeDeleted, limit, search } = query;
+    return this.faqsService.list({
+      shopId,
+      includeDeleted: includeDeleted === "true",
+      limit: limit ? Number(limit) : undefined,
+      search,
+    });
   }
 
   @Get(":id")

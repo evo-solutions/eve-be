@@ -1,13 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@app/database/database.service";
 import { ShopEntity } from "@app/database/entities/shop.entity";
-import {
-  Cursor,
-  cursorPaginate,
-} from "@app/database/pagination/cursor-pagination";
 import { In, IsNull, Repository } from "typeorm";
 import { CreateShopsDto } from "./dto/create-shops.dto";
-import { UpdateShopsDto } from "./dto/update-shops.dto";
+import { UpdateShopItemDto, UpdateShopsDto } from "./dto/update-shops.dto";
 
 @Injectable()
 export class ShopsService {
@@ -47,6 +43,22 @@ export class ShopsService {
     return this.repo.save([...byId.values()]);
   }
 
+  async updateOne(id: string, patch: UpdateShopItemDto): Promise<ShopEntity> {
+    const shop = await this.repo.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+    if (!shop) {
+      throw new NotFoundException("Shop not found");
+    }
+
+    if (patch.userId !== undefined) shop.userId = patch.userId;
+    if (patch.name !== undefined) shop.name = patch.name;
+    if (patch.description !== undefined) shop.description = patch.description;
+    if (patch.isActive !== undefined) shop.isActive = patch.isActive;
+
+    return this.repo.save(shop);
+  }
+
   async deleteMany(ids: string[]): Promise<{ deletedCount: number }> {
     const result = await this.repo
       .createQueryBuilder()
@@ -61,41 +73,29 @@ export class ShopsService {
   async list(params: {
     userId?: string;
     includeDeleted?: boolean;
-    cursor?: Cursor | null;
     limit?: number;
     search?: string;
     isActive?: boolean;
-  }): Promise<{ items: ShopEntity[]; nextCursor: Cursor | null }> {
-    const {
-      userId,
-      includeDeleted = false,
-      cursor,
-      limit = 20,
-      search,
-      isActive,
-    } = params;
+  }): Promise<ShopEntity[]> {
+    const { userId, includeDeleted = false, limit = 50, search, isActive } = params;
     const qb = this.repo.createQueryBuilder("shop");
-    const paginated = await cursorPaginate(qb, {
-      alias: "shop",
-      limit,
-      cursor: cursor ?? null,
-      searchTerm: search,
-      searchFields: ["name", "description"],
-      filters: {
-        ...(userId ? { userId } : {}),
-        ...(typeof isActive === "boolean" ? { isActive } : {}),
-      },
-      whereBuilder: (builder) => {
-        if (!includeDeleted) {
-          builder.andWhere("shop.deleted_at IS NULL");
-        }
-      },
-    });
 
-    return {
-      items: paginated.data,
-      nextCursor: paginated.pageInfo.endCursor,
-    };
+    if (!includeDeleted) {
+      qb.andWhere("shop.deleted_at IS NULL");
+    }
+    if (userId) {
+      qb.andWhere("shop.user_id = :userId", { userId });
+    }
+    if (typeof isActive === "boolean") {
+      qb.andWhere("shop.is_active = :isActive", { isActive });
+    }
+    if (search?.trim()) {
+      const q = search.trim();
+      qb.andWhere("(shop.name % :q OR shop.description % :q)", { q });
+    }
+
+    qb.orderBy("shop.created_at", "DESC").take(limit);
+    return qb.getMany();
   }
 
   async detail(id: string): Promise<ShopEntity> {

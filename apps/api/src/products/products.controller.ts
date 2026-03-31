@@ -8,29 +8,15 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
-import { Cursor } from "@app/database/pagination/cursor-pagination";
 import { ProductsService } from "./products.service";
 import { CreateProductsDto } from "./dto/create-products.dto";
-import { UpdateProductsDto } from "./dto/update-products.dto";
+import { UpdateProductItemDto, UpdateProductsDto } from "./dto/update-products.dto";
 import { DeleteManyDto } from "./dto/delete-many.dto";
-
-function parseCursorToken(cursor?: string): Cursor | null {
-  if (!cursor) return null;
-  try {
-    return JSON.parse(Buffer.from(cursor, "base64").toString("utf8")) as Cursor;
-  } catch {
-    return null;
-  }
-}
-
-function toCursorToken(cursor: Cursor | null): string | null {
-  if (!cursor) return null;
-  return Buffer.from(JSON.stringify(cursor)).toString("base64");
-}
+import { ListProductsDto } from "./dto/list-products.dto";
 
 @Controller("products")
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService) { }
 
   @Post("create")
   create(@Body() dto: CreateProductsDto) {
@@ -42,40 +28,36 @@ export class ProductsController {
     return this.productsService.updateMany(dto);
   }
 
+  @Patch(":id")
+  updateOne(@Param("id") id: string, @Body() body: Omit<UpdateProductItemDto, "id">) {
+    return this.productsService.updateOne(id, body as UpdateProductItemDto);
+  }
+
   @Delete("delete")
   remove(@Body() dto: DeleteManyDto) {
     return this.productsService.deleteMany(dto.ids);
   }
 
   @Get()
-  list(
-    @Query("shopId") shopId?: string,
-    @Query("includeDeleted") includeDeleted?: string,
-    @Query("cursor") cursor?: string,
-    @Query("limit") limit?: string,
-    @Query("search") search?: string,
-    @Query("isActive") isActive?: string,
-  ) {
-    return this.productsService
-      .list({
-        shopId,
-        includeDeleted: includeDeleted === "true",
-        cursor: parseCursorToken(cursor),
-        limit: limit ? Number(limit) : undefined,
-        search,
-        isActive:
-          isActive === undefined
-            ? undefined
-            : isActive === "true"
-              ? true
-              : isActive === "false"
-                ? false
-                : undefined,
-      })
-      .then((result) => ({
-        items: result.items,
-        nextCursor: toCursorToken(result.nextCursor),
-      }));
+  list(@Query() query: ListProductsDto) {
+    const { shopId, includeDeleted, limit, search, isActive } = query;
+    const parsedLimit = limit ? Number(limit) : 50;
+    const parsedIsActive =
+      isActive === undefined
+        ? undefined
+        : isActive === "true"
+          ? true
+          : isActive === "false"
+            ? false
+            : undefined;
+
+    return this.productsService.list({
+      shopId,
+      includeDeleted: includeDeleted === "true",
+      limit: parsedLimit,
+      search,
+      isActive: parsedIsActive,
+    });
   }
 
   @Get(":id")

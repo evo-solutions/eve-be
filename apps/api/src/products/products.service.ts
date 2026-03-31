@@ -1,13 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@app/database/database.service";
 import { ProductEntity } from "@app/database/entities/product.entity";
-import {
-  Cursor,
-  cursorPaginate,
-} from "@app/database/pagination/cursor-pagination";
 import { In, IsNull, Repository } from "typeorm";
 import { CreateProductsDto } from "./dto/create-products.dto";
-import { UpdateProductsDto } from "./dto/update-products.dto";
+import { UpdateProductItemDto, UpdateProductsDto } from "./dto/update-products.dto";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 @Injectable()
@@ -73,6 +69,34 @@ export class ProductsService {
     return updated;
   }
 
+  async updateOne(id: string, patch: UpdateProductItemDto): Promise<ProductEntity> {
+    const product = await this.repo.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+    if (!product) {
+      throw new NotFoundException("Product not found");
+    }
+
+    if (patch.shopId !== undefined) product.shopId = patch.shopId;
+    if (patch.name !== undefined) product.name = patch.name;
+    if (patch.price !== undefined) product.price = patch.price;
+    if (patch.thumbnailUrl !== undefined) product.thumbnailUrl = patch.thumbnailUrl;
+    if (patch.imageUrls !== undefined) product.imageUrls = patch.imageUrls;
+    if (patch.searchContent !== undefined) product.searchContent = patch.searchContent;
+    if (patch.orderConfig !== undefined) product.orderConfig = patch.orderConfig;
+    if (patch.isActive !== undefined) product.isActive = patch.isActive;
+
+    const updated = await this.repo.save(product);
+    await this.embeddingsService.replaceProductEmbeddings([
+      {
+        id: updated.id,
+        shopId: updated.shopId,
+        searchContent: updated.searchContent,
+      },
+    ]);
+    return updated;
+  }
+
   async deleteMany(ids: string[]): Promise<{ deletedCount: number }> {
     const result = await this.repo
       .createQueryBuilder()
@@ -91,41 +115,36 @@ export class ProductsService {
   async list(params: {
     shopId?: string;
     includeDeleted?: boolean;
-    cursor?: Cursor | null;
     limit?: number;
     search?: string;
     isActive?: boolean;
-  }): Promise<{ items: ProductEntity[]; nextCursor: Cursor | null }> {
-    const {
-      shopId,
-      includeDeleted = false,
-      cursor,
-      limit = 20,
-      search,
-      isActive,
-    } = params;
+  }): Promise<ProductEntity[]> {
+    const { shopId, includeDeleted = false, limit = 50, search, isActive } = params;
     const qb = this.repo.createQueryBuilder("product");
-    const paginated = await cursorPaginate(qb, {
-      alias: "product",
-      limit,
-      cursor: cursor ?? null,
-      searchTerm: search,
-      searchFields: ["name", "searchContent", "thumbnailUrl"],
-      filters: {
-        ...(shopId ? { shopId } : {}),
-        ...(typeof isActive === "boolean" ? { isActive } : {}),
-      },
-      whereBuilder: (builder) => {
-        if (!includeDeleted) {
-          builder.andWhere("product.deleted_at IS NULL");
-        }
-      },
-    });
 
-    return {
-      items: paginated.data,
-      nextCursor: paginated.pageInfo.endCursor,
-    };
+    if (!includeDeleted) {
+      qb.andWhere("product.deleted_at IS NULL");
+    }
+
+    if (shopId) {
+      qb.andWhere("product.shop_id = :shopId", { shopId });
+    }
+
+    if (typeof isActive === "boolean") {
+      qb.andWhere("product.is_active = :isActive", { isActive });
+    }
+
+    if (search?.trim()) {
+      const q = search.trim();
+      qb.andWhere(
+        "(product.name % :q OR product.search_content % :q OR product.thumbnail_url % :q)",
+        { q },
+      );
+    }
+
+    qb.orderBy("product.created_at", "DESC").take(limit);
+
+    return qb.getMany();
   }
 
   async detail(id: string): Promise<ProductEntity> {

@@ -1,13 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@app/database/database.service";
 import { FaqEntity } from "@app/database/entities/faq.entity";
-import {
-  Cursor,
-  cursorPaginate,
-} from "@app/database/pagination/cursor-pagination";
 import { In, IsNull, Repository } from "typeorm";
 import { CreateFaqsDto } from "./dto/create-faqs.dto";
-import { UpdateFaqsDto } from "./dto/update-faqs.dto";
+import { UpdateFaqItemDto, UpdateFaqsDto } from "./dto/update-faqs.dto";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 @Injectable()
@@ -67,6 +63,30 @@ export class FaqsService {
     return updated;
   }
 
+  async updateOne(id: string, patch: UpdateFaqItemDto): Promise<FaqEntity> {
+    const faq = await this.repo.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
+    if (!faq) {
+      throw new NotFoundException("FAQ not found");
+    }
+
+    if (patch.shopId !== undefined) faq.shopId = patch.shopId;
+    if (patch.question !== undefined) faq.question = patch.question;
+    if (patch.answer !== undefined) faq.answer = patch.answer;
+
+    const updated = await this.repo.save(faq);
+    await this.embeddingsService.replaceFaqEmbeddings([
+      {
+        id: updated.id,
+        shopId: updated.shopId,
+        question: updated.question,
+        answer: updated.answer,
+      },
+    ]);
+    return updated;
+  }
+
   async deleteMany(ids: string[]): Promise<{ deletedCount: number }> {
     const result = await this.repo
       .createQueryBuilder()
@@ -85,38 +105,31 @@ export class FaqsService {
   async list(params: {
     shopId?: string;
     includeDeleted?: boolean;
-    cursor?: Cursor | null;
     limit?: number;
     search?: string;
-  }): Promise<{ items: FaqEntity[]; nextCursor: Cursor | null }> {
-    const {
-      shopId,
-      includeDeleted = false,
-      cursor,
-      limit = 20,
-      search,
-    } = params;
-    const qb = this.repo.createQueryBuilder("faq");
-    const paginated = await cursorPaginate(qb, {
-      alias: "faq",
-      limit,
-      cursor: cursor ?? null,
-      searchTerm: search,
-      searchFields: ["question", "answer"],
-      filters: {
-        ...(shopId ? { shopId } : {}),
-      },
-      whereBuilder: (builder) => {
-        if (!includeDeleted) {
-          builder.andWhere("faq.deleted_at IS NULL");
-        }
-      },
-    });
+  }): Promise<FaqEntity[]> {
+    const { shopId, includeDeleted = false, limit = 50, search } = params;
 
-    return {
-      items: paginated.data,
-      nextCursor: paginated.pageInfo.endCursor,
-    };
+    const qb = this.repo.createQueryBuilder("faq");
+
+    if (!includeDeleted) {
+      qb.andWhere("faq.deleted_at IS NULL");
+    }
+
+    if (shopId) {
+      qb.andWhere("faq.shop_id = :shopId", { shopId });
+    }
+
+    if (search?.trim()) {
+      const q = search.trim();
+      qb.andWhere("(faq.question % :q OR faq.answer % :q)", {
+        q,
+      });
+    }
+
+    qb.orderBy("faq.created_at", "DESC").take(limit);
+
+    return qb.getMany();
   }
 
   async detail(id: string): Promise<FaqEntity> {
