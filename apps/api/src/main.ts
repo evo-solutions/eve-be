@@ -7,8 +7,9 @@ import "dotenv/config";
 
 async function bootstrap() {
   const app = await NestFactory.create(ApiModule);
+  // Cho phép tất cả origin (bỏ hạn chế CORS)
   app.enableCors({
-    origin: true,
+    origin: "*",
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [

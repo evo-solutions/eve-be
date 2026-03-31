@@ -36,15 +36,6 @@
       "compilerOptions": {
         "tsConfigPath": "libs/database/tsconfig.lib.json"
       }
-    },
-    "eve": {
-      "type": "application",
-      "root": "apps/eve",
-      "entryFile": "main",
-      "sourceRoot": "apps/eve/src",
-      "compilerOptions": {
-        "tsConfigPath": "apps/eve/tsconfig.app.json"
-      }
     }
   }
 }

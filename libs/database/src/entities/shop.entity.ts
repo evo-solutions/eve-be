@@ -5,22 +5,30 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
+  ManyToOne,
 } from "typeorm";
+import { UserEntity } from "./user.entity";
 
-@Entity("users")
-@Index("IDX_users_deleted_at", ["deletedAt"])
-export class UserEntity {
+@Entity("shops")
+@Index("IDX_shops_user_id", ["userId"])
+@Index("IDX_shops_deleted_at", ["deletedAt"])
+export class ShopEntity {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column("text", { nullable: false })
+  @Column("uuid", { name: "user_id" })
+  userId: string;
+
+  @Column("text")
   name: string;
 
-  @Column("text", { unique: true, nullable: false })
-  email: string;
+  @Column("text", { nullable: true })
+  description: string;
 
-  @Column("text", { name: "password_hash", nullable: false })
-  passwordHash: string;
+  @ManyToOne(() => UserEntity, (user) => user.id)
+  @JoinColumn({ name: "user_id" })
+  user: UserEntity;
 
   @Column("boolean", { name: "is_active", default: true })
   isActive: boolean;
@@ -33,7 +41,4 @@ export class UserEntity {
 
   @Column("timestamptz", { name: "deleted_at", nullable: true })
   deletedAt: Date;
-
-  @Column("timestamptz", { name: "last_login", nullable: true })
-  lastLogin: Date;
 }
