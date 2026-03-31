@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@app/database/database.service";
 import { ProductEntity } from "@app/database/entities/product.entity";
-import { In, IsNull, Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { CreateProductsDto } from "./dto/create-products.dto";
-import { UpdateProductItemDto, UpdateProductsDto } from "./dto/update-products.dto";
+import { UpdateProductItemDto } from "./dto/update-products.dto";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 @Injectable()
@@ -28,45 +28,6 @@ export class ProductsService {
       })),
     );
     return created;
-  }
-
-  async updateMany(dto: UpdateProductsDto): Promise<ProductEntity[]> {
-    const ids = dto.items.map((item) => item.id);
-    const existing = await this.repo.find({
-      where: { id: In(ids), deletedAt: IsNull() },
-    });
-    if (existing.length !== ids.length) {
-      throw new NotFoundException("Some products not found");
-    }
-
-    const byId = new Map(existing.map((item) => [item.id, item]));
-    for (const patch of dto.items) {
-      const entity = byId.get(patch.id);
-      if (!entity) {
-        continue;
-      }
-      if (patch.shopId !== undefined) entity.shopId = patch.shopId;
-      if (patch.name !== undefined) entity.name = patch.name;
-      if (patch.price !== undefined) entity.price = patch.price;
-      if (patch.thumbnailUrl !== undefined)
-        entity.thumbnailUrl = patch.thumbnailUrl;
-      if (patch.imageUrls !== undefined) entity.imageUrls = patch.imageUrls;
-      if (patch.searchContent !== undefined)
-        entity.searchContent = patch.searchContent;
-      if (patch.orderConfig !== undefined)
-        entity.orderConfig = patch.orderConfig;
-      if (patch.isActive !== undefined) entity.isActive = patch.isActive;
-    }
-
-    const updated = await this.repo.save([...byId.values()]);
-    await this.embeddingsService.replaceProductEmbeddings(
-      updated.map((product) => ({
-        id: product.id,
-        shopId: product.shopId,
-        searchContent: product.searchContent,
-      })),
-    );
-    return updated;
   }
 
   async updateOne(id: string, patch: UpdateProductItemDto): Promise<ProductEntity> {

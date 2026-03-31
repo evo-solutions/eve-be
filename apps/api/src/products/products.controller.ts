@@ -4,13 +4,13 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   Query,
+  Put,
 } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { CreateProductsDto } from "./dto/create-products.dto";
-import { UpdateProductItemDto, UpdateProductsDto } from "./dto/update-products.dto";
+import { UpdateProductItemDto } from "./dto/update-products.dto";
 import { DeleteManyDto } from "./dto/delete-many.dto";
 import { ListProductsDto } from "./dto/list-products.dto";
 
@@ -23,12 +23,7 @@ export class ProductsController {
     return this.productsService.createMany(dto);
   }
 
-  @Patch("update")
-  update(@Body() dto: UpdateProductsDto) {
-    return this.productsService.updateMany(dto);
-  }
-
-  @Patch(":id")
+  @Put(":id")
   updateOne(@Param("id") id: string, @Body() body: Omit<UpdateProductItemDto, "id">) {
     return this.productsService.updateOne(id, body as UpdateProductItemDto);
   }

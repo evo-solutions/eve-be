@@ -142,6 +142,51 @@ export class EmbeddingsService {
       .execute();
   }
 
+  /**
+   * Tìm nội dung FAQ/sản phẩm gần nhất với câu hỏi (pgvector cosine distance).
+   */
+  async searchRelevantForShop(
+    shopId: string,
+    queryText: string,
+    limit = 8,
+  ): Promise<
+    Array<{
+      type: string;
+      content: string;
+      metadata: Record<string, unknown> | null;
+    }>
+  > {
+    const q = this.normalizeContent(queryText);
+    if (!q) {
+      return [];
+    }
+
+    const embedding = await this.generateEmbedding(q);
+    if (embedding.length === 0) {
+      return [];
+    }
+
+    const vectorLiteral = `[${embedding.join(",")}]`;
+
+    const rows = (await this.repo.manager.query(
+      `
+      SELECT type, content, metadata
+      FROM embeddings
+      WHERE shop_id = $2::uuid
+        AND deleted_at IS NULL
+      ORDER BY embedding <=> $1::vector
+      LIMIT $3
+      `,
+      [vectorLiteral, shopId, limit],
+    )) as Array<{
+      type: string;
+      content: string;
+      metadata: Record<string, unknown> | null;
+    }>;
+
+    return rows ?? [];
+  }
+
   private async generateEmbedding(content: string): Promise<number[]> {
     const response = await this.openaiClient.embeddings.create({
       model: this.embeddingModel,

@@ -10,6 +10,7 @@ import { FaqsModule } from "./faqs/faqs.module";
 import { ConversationsModule } from "./conversations/conversations.module";
 import { OrdersModule } from "./orders/orders.module";
 import { EmbeddingsModule } from "./embeddings/embeddings.module";
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { EmbeddingsModule } from "./embeddings/embeddings.module";
     ConversationsModule,
     OrdersModule,
     EmbeddingsModule,
+    ChatModule,
   ],
   controllers: [ApiController],
   providers: [ApiService],

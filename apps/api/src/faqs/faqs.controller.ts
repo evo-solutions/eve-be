@@ -4,13 +4,13 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   Query,
+  Put,
 } from "@nestjs/common";
 import { FaqsService } from "./faqs.service";
 import { CreateFaqsDto } from "./dto/create-faqs.dto";
-import { UpdateFaqItemDto, UpdateFaqsDto } from "./dto/update-faqs.dto";
+import { UpdateFaqItemDto } from "./dto/update-faqs.dto";
 import { DeleteManyDto } from "./dto/delete-many.dto";
 import { ListFaqsDto } from "./dto/list-faqs.dto";
 
@@ -23,12 +23,7 @@ export class FaqsController {
     return this.faqsService.createMany(dto);
   }
 
-  @Patch("update")
-  update(@Body() dto: UpdateFaqsDto) {
-    return this.faqsService.updateMany(dto);
-  }
-
-  @Patch(":id")
+  @Put(":id")
   updateOne(@Param("id") id: string, @Body() body: Omit<UpdateFaqItemDto, "id">) {
     return this.faqsService.updateOne(id, body as UpdateFaqItemDto);
   }

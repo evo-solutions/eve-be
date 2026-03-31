@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@app/database/database.service";
 import { ShopEntity } from "@app/database/entities/shop.entity";
-import { In, IsNull, Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { CreateShopsDto } from "./dto/create-shops.dto";
-import { UpdateShopItemDto, UpdateShopsDto } from "./dto/update-shops.dto";
+import { UpdateShopItemDto } from "./dto/update-shops.dto";
 
 @Injectable()
 export class ShopsService {
@@ -16,31 +16,6 @@ export class ShopsService {
   async createMany(dto: CreateShopsDto): Promise<ShopEntity[]> {
     const entities = this.repo.create(dto.items);
     return this.repo.save(entities);
-  }
-
-  async updateMany(dto: UpdateShopsDto): Promise<ShopEntity[]> {
-    const ids = dto.items.map((item) => item.id);
-    const existing = await this.repo.find({
-      where: { id: In(ids), deletedAt: IsNull() },
-    });
-    if (existing.length !== ids.length) {
-      throw new NotFoundException("Some shops not found");
-    }
-
-    const byId = new Map(existing.map((item) => [item.id, item]));
-    for (const patch of dto.items) {
-      const entity = byId.get(patch.id);
-      if (!entity) {
-        continue;
-      }
-      if (patch.userId !== undefined) entity.userId = patch.userId;
-      if (patch.name !== undefined) entity.name = patch.name;
-      if (patch.description !== undefined)
-        entity.description = patch.description;
-      if (patch.isActive !== undefined) entity.isActive = patch.isActive;
-    }
-
-    return this.repo.save([...byId.values()]);
   }
 
   async updateOne(id: string, patch: UpdateShopItemDto): Promise<ShopEntity> {

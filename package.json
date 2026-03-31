@@ -101,6 +101,7 @@
       "<rootDir>/libs/"
     ],
     "moduleNameMapper": {
+      "^@app/ai(|/.*)$": "<rootDir>/libs/ai/src/$1",
       "^@app/core(|/.*)$": "<rootDir>/libs/core/src/$1",
       "^@app/database(|/.*)$": "<rootDir>/libs/database/src/$1"
     }

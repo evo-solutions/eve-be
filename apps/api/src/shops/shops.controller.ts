@@ -4,14 +4,14 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   Query,
+  Put,
 } from "@nestjs/common";
 import { ShopsService } from "./shops.service";
 import { CreateShopsDto } from "./dto/create-shops.dto";
 import { DeleteManyDto } from "./dto/delete-many.dto";
-import { UpdateShopItemDto, UpdateShopsDto } from "./dto/update-shops.dto";
+import { UpdateShopItemDto } from "./dto/update-shops.dto";
 import { ListShopsDto } from "./dto/list-shops.dto";
 @Controller("shops")
 export class ShopsController {
@@ -22,14 +22,9 @@ export class ShopsController {
     return this.shopsService.createMany(dto);
   }
 
-  @Patch("update")
-  update(@Body() dto: UpdateShopsDto) {
-    return this.shopsService.updateMany(dto);
-  }
-
-  @Patch(":id")
+  @Put(":id")
   updateOne(@Param("id") id: string, @Body() body: Omit<UpdateShopItemDto, "id">) {
-    return this.shopsService.updateOne(id, body);
+    return this.shopsService.updateOne(id, body as UpdateShopItemDto);
   }
 
   @Delete("delete")

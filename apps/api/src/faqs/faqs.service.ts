@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@app/database/database.service";
 import { FaqEntity } from "@app/database/entities/faq.entity";
-import { In, IsNull, Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { CreateFaqsDto } from "./dto/create-faqs.dto";
-import { UpdateFaqItemDto, UpdateFaqsDto } from "./dto/update-faqs.dto";
+import { UpdateFaqItemDto } from "./dto/update-faqs.dto";
 import { EmbeddingsService } from "../embeddings/embeddings.service";
 
 @Injectable()
@@ -29,38 +29,6 @@ export class FaqsService {
       })),
     );
     return created;
-  }
-
-  async updateMany(dto: UpdateFaqsDto): Promise<FaqEntity[]> {
-    const ids = dto.items.map((item) => item.id);
-    const existing = await this.repo.find({
-      where: { id: In(ids), deletedAt: IsNull() },
-    });
-    if (existing.length !== ids.length) {
-      throw new NotFoundException("Some FAQs not found");
-    }
-
-    const byId = new Map(existing.map((item) => [item.id, item]));
-    for (const patch of dto.items) {
-      const entity = byId.get(patch.id);
-      if (!entity) {
-        continue;
-      }
-      if (patch.shopId !== undefined) entity.shopId = patch.shopId;
-      if (patch.question !== undefined) entity.question = patch.question;
-      if (patch.answer !== undefined) entity.answer = patch.answer;
-    }
-
-    const updated = await this.repo.save([...byId.values()]);
-    await this.embeddingsService.replaceFaqEmbeddings(
-      updated.map((faq) => ({
-        id: faq.id,
-        shopId: faq.shopId,
-        question: faq.question,
-        answer: faq.answer,
-      })),
-    );
-    return updated;
   }
 
   async updateOne(id: string, patch: UpdateFaqItemDto): Promise<FaqEntity> {
