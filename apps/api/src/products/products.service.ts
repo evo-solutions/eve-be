@@ -95,11 +95,12 @@ export class ProductsService {
       qb.andWhere("product.is_active = :isActive", { isActive });
     }
 
-    if (search?.trim()) {
-      const q = search.trim();
+    const searchPattern = this.buildIlikeSearchPattern(search);
+    if (searchPattern) {
+      // Dùng tên property trên entity (name, searchContent, thumbnailUrl) để TypeORM map đúng cột DB.
       qb.andWhere(
-        "(product.name % :q OR product.search_content % :q OR product.thumbnail_url % :q)",
-        { q },
+        "(product.name ILIKE :searchPattern OR COALESCE(product.searchContent, '') ILIKE :searchPattern OR COALESCE(product.thumbnailUrl, '') ILIKE :searchPattern)",
+        { searchPattern },
       );
     }
 
@@ -116,5 +117,13 @@ export class ProductsService {
       throw new NotFoundException("Product not found");
     }
     return product;
+  }
+
+  private buildIlikeSearchPattern(search?: string): string | null {
+    const raw = search?.trim().replace(/[%_\\]/g, "") ?? "";
+    if (!raw) {
+      return null;
+    }
+    return `%${raw}%`;
   }
 }

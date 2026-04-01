@@ -88,11 +88,12 @@ export class FaqsService {
       qb.andWhere("faq.shop_id = :shopId", { shopId });
     }
 
-    if (search?.trim()) {
-      const q = search.trim();
-      qb.andWhere("(faq.question % :q OR faq.answer % :q)", {
-        q,
-      });
+    const searchPattern = this.buildIlikeSearchPattern(search);
+    if (searchPattern) {
+      qb.andWhere(
+        "(faq.question ILIKE :searchPattern OR faq.answer ILIKE :searchPattern)",
+        { searchPattern },
+      );
     }
 
     qb.orderBy("faq.created_at", "DESC").take(limit);
@@ -108,5 +109,13 @@ export class FaqsService {
       throw new NotFoundException("FAQ not found");
     }
     return faq;
+  }
+
+  private buildIlikeSearchPattern(search?: string): string | null {
+    const raw = search?.trim().replace(/[%_\\]/g, "") ?? "";
+    if (!raw) {
+      return null;
+    }
+    return `%${raw}%`;
   }
 }

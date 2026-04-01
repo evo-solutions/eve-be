@@ -64,9 +64,12 @@ export class ShopsService {
     if (typeof isActive === "boolean") {
       qb.andWhere("shop.is_active = :isActive", { isActive });
     }
-    if (search?.trim()) {
-      const q = search.trim();
-      qb.andWhere("(shop.name % :q OR shop.description % :q)", { q });
+    const searchPattern = this.buildIlikeSearchPattern(search);
+    if (searchPattern) {
+      qb.andWhere(
+        "(shop.name ILIKE :searchPattern OR COALESCE(shop.description, '') ILIKE :searchPattern)",
+        { searchPattern },
+      );
     }
 
     qb.orderBy("shop.created_at", "DESC").take(limit);
@@ -81,5 +84,14 @@ export class ShopsService {
       throw new NotFoundException("Shop not found");
     }
     return shop;
+  }
+
+  /** ILIKE %term% — không phụ thuộc pg_trgm; bỏ ký tự wildcard để tránh lệch ý định. */
+  private buildIlikeSearchPattern(search?: string): string | null {
+    const raw = search?.trim().replace(/[%_\\]/g, "") ?? "";
+    if (!raw) {
+      return null;
+    }
+    return `%${raw}%`;
   }
 }
