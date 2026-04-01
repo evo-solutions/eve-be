@@ -2,6 +2,8 @@ import { Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
+  IsOptional,
   IsString,
   IsUUID,
   ValidateNested,
@@ -16,6 +18,11 @@ export class CreateFaqItemDto {
 
   @IsString()
   answer: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class CreateFaqsDto {

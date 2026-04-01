@@ -20,5 +20,9 @@ export class ListFaqsDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  isActive?: string; // "true" | "false"
 }
 

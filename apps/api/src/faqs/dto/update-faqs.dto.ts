@@ -2,6 +2,7 @@ import { Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsOptional,
   IsString,
   IsUUID,
@@ -23,6 +24,11 @@ export class UpdateFaqItemDto {
   @IsOptional()
   @IsString()
   answer?: string;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class UpdateFaqsDto {

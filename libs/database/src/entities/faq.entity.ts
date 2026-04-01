@@ -29,6 +29,9 @@ export class FaqEntity {
   @Column("text")
   answer: string;
 
+  @Column("boolean", { name: "is_active", default: true, nullable: true })
+  isActive: boolean;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 

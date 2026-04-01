@@ -35,12 +35,20 @@ export class FaqsController {
 
   @Get()
   list(@Query() query: ListFaqsDto) {
-    const { shopId, includeDeleted, limit, search } = query;
+    const { shopId, includeDeleted, limit, search, isActive } = query;
     return this.faqsService.list({
       shopId,
       includeDeleted: includeDeleted === "true",
       limit: limit ? Number(limit) : undefined,
       search,
+      isActive:
+        isActive === undefined
+          ? undefined
+          : isActive === "true"
+            ? true
+            : isActive === "false"
+              ? false
+              : undefined,
     });
   }
 

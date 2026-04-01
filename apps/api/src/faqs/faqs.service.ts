@@ -42,6 +42,7 @@ export class FaqsService {
     if (patch.shopId !== undefined) faq.shopId = patch.shopId;
     if (patch.question !== undefined) faq.question = patch.question;
     if (patch.answer !== undefined) faq.answer = patch.answer;
+    if (patch.isActive !== undefined) faq.isActive = patch.isActive;
 
     const updated = await this.repo.save(faq);
     await this.embeddingsService.replaceFaqEmbeddings([
@@ -75,8 +76,10 @@ export class FaqsService {
     includeDeleted?: boolean;
     limit?: number;
     search?: string;
+    isActive?: boolean;
   }): Promise<FaqEntity[]> {
-    const { shopId, includeDeleted = false, limit = 50, search } = params;
+    const { shopId, includeDeleted = false, limit = 50, search, isActive } =
+      params;
 
     const qb = this.repo.createQueryBuilder("faq");
 
@@ -86,6 +89,10 @@ export class FaqsService {
 
     if (shopId) {
       qb.andWhere("faq.shop_id = :shopId", { shopId });
+    }
+
+    if (typeof isActive === "boolean") {
+      qb.andWhere("faq.is_active = :isActive", { isActive });
     }
 
     const searchPattern = this.buildIlikeSearchPattern(search);
